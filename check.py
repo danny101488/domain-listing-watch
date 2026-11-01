@@ -42,7 +42,9 @@ def save(path, obj):
 
 def norm_price(v):
     s = str(v).replace("$", "").replace(",", "").replace("USD", "").strip()
-    f = float(s)
+    f = round(float(s), 2)
+    if f < 0:  # Dynadot uses -1 for "make offer" listings
+        return "o"
     return str(int(f)) if f.is_integer() else repr(f)
 
 
@@ -79,6 +81,48 @@ def bootstrap():
             elif e["kind"] == "nameservers":
                 s["ns"] = e["after"]
         save("state.json", {"source": "bootstrap", "at": now(), "domains": st})
+
+
+def calibrate():
+    """One-time fix after the first Dynadot API read (2026-11-01T20:05:17Z).
+
+    The API's ask is the list price plus the buyer's 1-year renewal fee (non-.si TLDs), "make offer"
+    is -1, and the 27 Spaceship-registered names are listed on Dynadot via its other-registrar
+    network. Those 94 format-only differences are dropped; real events (employer.si) are kept.
+    """
+    AT = "2026-11-01T20:05:17Z"
+    st = load("state.json", {})
+    if st.get("calibrated") or st.get("source") != "api":
+        return
+    S, fees, keep = st["domains"], {}, []
+    for e in load("changes.json", []):
+        if e["at"] != AT:
+            keep.append(e)
+        elif e["kind"] == "price" and e["after"] == "-1":
+            S[e["domain"]]["p"] = "o"
+        elif e["kind"] == "price" and 0 < float(e["after"]) - float(e["before"]) <= 1500:
+            fees[e["domain"]] = round(float(e["after"]) - float(e["before"]), 2)
+            S[e["domain"]]["p"] = e["before"]
+        elif e["kind"] == "on_dynadot":
+            continue
+        else:
+            keep.append(e)
+    dm = load("domains.json", [])
+    for r in dm:
+        if r["venue"] == "Spaceship only":
+            r["venue"], r["ask_note"] = "Dynadot", "Spaceship-registered"
+    ck = load("checks.json", [])
+    for c in ck:
+        if c["at"] == AT:
+            c["changes"] = sum(1 for e in keep if e["at"] == AT)
+            c["note"] = ("First read through the Dynadot API: renewal fees, make-offer codes and other-registrar "
+                         "listings calibrated (format-only differences dropped)")
+    st["fees"], st["calibrated"] = fees, AT
+    save("state.json", st)
+    save("changes.json", keep)
+    save("domains.json", dm)
+    save("checks.json", ck)
+    print(f"calibrated: {len(fees)} renewal fees, kept {sum(1 for e in keep if e['at'] == AT)} real event(s)")
 
 
 def get_json(url, headers, timeout=30):
@@ -136,7 +180,7 @@ def listing(domain, key):
             if isinstance(item, dict):
                 for k in ("price", "buy_now_price", "buy_it_now_price", "usd_price", "listing_price", "asking_price"):
                     v = item.get(k)
-                    if v not in (None, "", 0, "0"):
+                    if v not in (None, "", 0, "0", -1, "-1"):
                         try:
                             return norm_price(v)
                         except ValueError:
@@ -172,9 +216,11 @@ def money(p):
 
 def main():
     bootstrap()
+    calibrate()
     key = os.environ.get("DYNADOT_API_KEY", "").strip()
     st = load("state.json", {})
     S = st["domains"]
+    fees = st.get("fees", {})  # Dynadot's API ask = list price + the buyer's 1-year renewal fee
     changes = load("changes.json", [])
     checks = load("checks.json", [])
     at = now()
@@ -192,6 +238,9 @@ def main():
                 if v is None:
                     errors += 1
                 else:
+                    fee = fees.get(d)
+                    if fee and v not in ("", "o"):
+                        v = norm_price(float(v) - fee)
                     cur[d] = v
                 time.sleep(max(0, 1.1 - (time.time() - t0)))
                 if i == 30 and errors > 25:

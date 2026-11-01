@@ -222,7 +222,7 @@ window.dash = (() => {
       <div class="jw-kpi k-off"><span class="jw-kpi-l">Off Dynadot</span><span class="jw-kpi-n" data-draw="kpi" data-source="summary" data-field="off_dynadot" data-row="0">—</span><span class="jw-kpi-s">Listing no longer exported</span></div>
       <div class="jw-kpi k-ns"><span class="jw-kpi-l">New nameservers</span><span class="jw-kpi-n" data-draw="kpi" data-source="summary" data-field="new_nameservers" data-row="0">—</span><span class="jw-kpi-s">DNS moved since Oct 31</span></div>
       <div class="jw-kpi k-price"><span class="jw-kpi-l">Price changed</span><span class="jw-kpi-n" data-draw="kpi" data-source="summary" data-field="price_change" data-row="0">—</span><span class="jw-kpi-s">Ask differs from Oct 31</span></div>
-      <div class="jw-kpi k-good"><span class="jw-kpi-l">On Dynadot now</span><span class="jw-kpi-n" data-draw="kpi" data-source="summary" data-field="on_dynadot" data-row="0">—</span><span class="jw-kpi-s">Of 1,325 at the audit</span></div>
+      <div class="jw-kpi k-good"><span class="jw-kpi-l">On Dynadot now</span><span class="jw-kpi-n" data-draw="kpi" data-source="summary" data-field="on_dynadot" data-row="0">—</span><span class="jw-kpi-s">Of 1,352 watched</span></div>
       <div class="jw-kpi"><span class="jw-kpi-l">Total asking</span><span class="jw-kpi-n" data-draw="money" data-source="summary" data-field="ask_total" data-row="0">—</span><span class="jw-kpi-s">Sum of current asks</span></div>
     </div>
 
@@ -277,7 +277,7 @@ window.dash = (() => {
 
       <section class="jw-panel" id="names">
         <div class="jw-ph"><h2>All names</h2><span class="code">MOD-09 // REGISTRY</span></div>
-        <p class="jw-note">Ask on Oct 31 is the audited Dynadot price (Spaceship for the 27 names not on Dynadot). Names link to the Dynadot listing.</p>
+        <p class="jw-note">Ask on Oct 31 is the audited asking price; asks exclude the buyer's renewal fee that Dynadot adds at checkout. Names link to the Dynadot listing.</p>
         <div class="jw-tools">
           <div class="jw-seg" role="group" aria-label="Show">
             <button type="button" data-view="all" aria-pressed="true">All</button>
@@ -305,7 +305,7 @@ window.dash = (() => {
       </section>
     </div>
 
-    <p class="jw-foot">What this can and can't see: the sweeps read Dynadot's listing export and each name's public nameservers. A sale through Atom, Spaceship or a private deal may not show until the listing comes down or the nameservers move, and a listing can come down for reasons other than a sale. Confirm anything flagged with Jake. Atom and Spaceship prices are not re-checked; the 27 Spaceship-only names are watched through nameservers only. Updated automatically every 6 hours by GitHub Actions using Dynadot's official API and public DNS. The radar bearing, run ID and Gini index are presentation: they don't add information beyond the prices and statuses.</p>
+    <p class="jw-foot">What this can and can't see: the sweeps read each name's Dynadot listing (official API) and its public nameservers. A sale through Atom, Spaceship or a private deal may not show until the listing comes down or the nameservers move, and a listing can come down for reasons other than a sale. Confirm anything flagged with Jake. Atom and Spaceship's own marketplace prices are not re-checked; the 27 Spaceship-registered names are watched through their Dynadot listings. Updated automatically every 6 hours by GitHub Actions using Dynadot's official API and public DNS. The radar bearing, run ID and Gini index are presentation: they don't add information beyond the prices and statuses.</p>
   </div>
 </div>
 
@@ -467,7 +467,7 @@ window.dash = (() => {
     const [t, c] = map[v] || (v ? ['DEGRADED', 'warn'] : ['—', '']);
     el.textContent = t; el.className = c;
   });
-  dash.draw('lock', (el) => { const r = sum(); el.textContent = r && r.on_dynadot != null ? `${d3.format(',')(r.on_dynadot)}/1,325` : '—'; el.className = r && r.on_dynadot != null ? (r.on_dynadot >= 1325 ? 'ok' : 'warn') : ''; });
+  dash.draw('lock', (el) => { const r = sum(); el.textContent = r && r.on_dynadot != null ? `${d3.format(',')(r.on_dynadot)}/1,352` : '—'; el.className = r && r.on_dynadot != null ? (r.on_dynadot >= 1352 ? 'ok' : 'warn') : ''; });
   const renderCountdown = (el) => {
     const now = new Date(); let next = null;
     for (let d = 0; d < 2 && !next; d++) for (const h of SCHEDULE_UTC_HOURS) {
