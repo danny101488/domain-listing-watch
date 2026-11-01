@@ -21,6 +21,7 @@ jobs:
         run: python check.py
         env:
           DYNADOT_API_KEY: ${{ secrets.DYNADOT_API_KEY }}
+          DYNADOT_API_SECRET: ${{ secrets.DYNADOT_API_SECRET }}
       - name: Save results
         run: |
           git config user.name "github-actions[bot]"
