@@ -1,0 +1,30 @@
+name: Listing check
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch: {}
+permissions:
+  contents: write
+concurrency:
+  group: listing-check
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check listings and nameservers
+        run: python check.py
+        env:
+          DYNADOT_API_KEY: ${{ secrets.DYNADOT_API_KEY }}
+      - name: Save results
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add domains.json state.json changes.json checks.json
+          git diff --cached --quiet || git commit -m "Listing check $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push
