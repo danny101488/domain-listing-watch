@@ -200,6 +200,10 @@ def main():
         except PermissionError as e:
             dyn = "api_key_rejected"
             print(str(e))
+            for probe in ("https://api.dynadot.com/restful/v2/aftermarket/listings?currency=USD&page=1&page_size=5",
+                          "https://api.dynadot.com/restful/v2/aftermarket/listings?currency=USD&page=1&page_size=5&show_other_registrar=true"):
+                c, j = get_json(probe, headers(probe, key))
+                print("probe", probe.split("?")[1], "->", c, json.dumps(j)[:600].replace(key, "<key>"))
     print("sample responses (public listing data):", json.dumps(samples)[:1500])
 
     # 2) Public nameservers.
