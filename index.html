@@ -198,7 +198,7 @@ window.dash = (() => {
       <div>
         <div class="jw-eyebrow"><i class="jw-live" aria-hidden="true"></i><span>Surveillance array</span><span>//</span><span>.si portfolio</span><span>//</span><span>6h sweep cycle</span></div>
         <h1 class="jw-title">Domain listing <span>watch</span></h1>
-        <p class="jw-lede">Since the Oct 31 audit, <b data-draw="kpi" data-source="summary" data-field="needs_look" data-row="0">—</b> of <b data-draw="kpi" data-source="summary" data-field="watching" data-row="0">—</b> names have changed. Last sweep <b data-draw="when" data-source="summary">—</b>.</p>
+        <p class="jw-lede">Since each name’s baseline, <b data-draw="kpi" data-source="summary" data-field="needs_look" data-row="0">—</b> of <b data-draw="kpi" data-source="summary" data-field="watching" data-row="0">—</b> names have changed. Last sweep <b data-draw="when" data-source="summary">—</b>.</p>
       </div>
       <div style="display: grid; gap: 10px;">
         <div class="jw-skins" role="group" aria-label="Look"><span>Skin</span>
@@ -222,7 +222,7 @@ window.dash = (() => {
       <div class="jw-kpi k-off"><span class="jw-kpi-l">Off Dynadot</span><span class="jw-kpi-n" data-draw="kpi" data-source="summary" data-field="off_dynadot" data-row="0">—</span><span class="jw-kpi-s">Listing no longer exported</span></div>
       <div class="jw-kpi k-ns"><span class="jw-kpi-l">New nameservers</span><span class="jw-kpi-n" data-draw="kpi" data-source="summary" data-field="new_nameservers" data-row="0">—</span><span class="jw-kpi-s">DNS moved since Oct 31</span></div>
       <div class="jw-kpi k-price"><span class="jw-kpi-l">Price changed</span><span class="jw-kpi-n" data-draw="kpi" data-source="summary" data-field="price_change" data-row="0">—</span><span class="jw-kpi-s">Ask differs from Oct 31</span></div>
-      <div class="jw-kpi k-good"><span class="jw-kpi-l">On Dynadot now</span><span class="jw-kpi-n" data-draw="kpi" data-source="summary" data-field="on_dynadot" data-row="0">—</span><span class="jw-kpi-s">Of 1,352 watched</span></div>
+      <div class="jw-kpi k-good"><span class="jw-kpi-l">On Dynadot now</span><span class="jw-kpi-n" data-draw="kpi" data-source="summary" data-field="on_dynadot" data-row="0">—</span><span class="jw-kpi-s">Listed for sale right now</span></div>
       <div class="jw-kpi"><span class="jw-kpi-l">Total asking</span><span class="jw-kpi-n" data-draw="money" data-source="summary" data-field="ask_total" data-row="0">—</span><span class="jw-kpi-s">Sum of current asks</span></div>
     </div>
 
@@ -258,7 +258,7 @@ window.dash = (() => {
       </section>
 
       <section class="jw-panel" id="wall">
-        <div class="jw-ph"><h2>Name matrix</h2><span class="code">MOD-06 // 1,352-CELL ARRAY</span></div>
+        <div class="jw-ph"><h2>Name matrix</h2><span class="code">MOD-06 // FULL-BOOK ARRAY</span></div>
         <p class="jw-note">One cell per name, sorted by Oct 31 asking price. Brighter means a higher ask. Colored cells changed. Click a cell to find the name in the table.</p>
         <div class="jw-wall" data-draw="wall" data-source="current"></div>
       </section>
@@ -277,12 +277,13 @@ window.dash = (() => {
 
       <section class="jw-panel" id="names">
         <div class="jw-ph"><h2>All names</h2><span class="code">MOD-09 // REGISTRY</span></div>
-        <p class="jw-note">Ask on Oct 31 is the audited asking price; asks exclude the buyer's renewal fee that Dynadot adds at checkout. Names link to the Dynadot listing.</p>
+        <p class="jw-note">Baseline ask is the Oct 31 audited price; the 392 names added from Jake's October 2026 portfolio (1,744 names) use their first check on Nov 2 instead. Asks exclude the renewal fee Dynadot adds at checkout. “Developed” marks the 94 names Jake lists as live sites. Names link to the Dynadot listing.</p>
         <div class="jw-tools">
           <div class="jw-seg" role="group" aria-label="Show">
             <button type="button" data-view="all" aria-pressed="true">All</button>
             <button type="button" data-view="changed" aria-pressed="false">Changed</button>
             <button type="button" data-view="priority" aria-pressed="false">Priority 101</button>
+            <button type="button" data-view="developed" aria-pressed="false">Developed</button>
           </div>
           <input class="jw-q" id="jw-q" type="search" placeholder="Search names" aria-label="Search names">
           <span class="jw-shown" data-draw="shown" data-source="current">—</span>
@@ -293,7 +294,7 @@ window.dash = (() => {
               <th class="jw-th" data-field="domain" data-sort="domain"><button type="button">Name</button></th>
               <th class="jw-th" data-field="status" data-sort="status"><button type="button">Status</button></th>
               <th class="jw-th num" data-field="ask_now" data-sort="ask_now"><button type="button">Ask now</button></th>
-              <th class="jw-th num" data-field="ask_oct31" data-sort="ask_oct31"><button type="button">Ask Oct 31</button></th>
+              <th class="jw-th num" data-field="ask_oct31" data-sort="ask_oct31"><button type="button">Baseline ask</button></th>
               <th class="jw-th num" data-field="change" data-sort="change"><button type="button">Change</button></th>
               <th class="jw-th jw-hide-sm" data-field="nameservers" data-sort="nameservers"><button type="button">Nameservers</button></th>
               <th class="jw-th jw-hide-sm" data-field="group" data-sort="group"><button type="button">Group</button></th>
@@ -305,7 +306,7 @@ window.dash = (() => {
       </section>
     </div>
 
-    <p class="jw-foot">What this can and can't see: the sweeps read each name's Dynadot listing (official API) and its public nameservers. A sale through Atom, Spaceship or a private deal may not show until the listing comes down or the nameservers move, and a listing can come down for reasons other than a sale. Confirm anything flagged with Jake. Atom and Spaceship's own marketplace prices are not re-checked; the 27 Spaceship-registered names are watched through their Dynadot listings. Updated automatically every 6 hours by GitHub Actions using Dynadot's official API and public DNS. The radar bearing, run ID and Gini index are presentation: they don't add information beyond the prices and statuses.</p>
+    <p class="jw-foot">What this can and can't see: the sweeps read each name's Dynadot listing (official API) and its public nameservers. A sale through Atom, Spaceship or a private deal may not show until the listing comes down or the nameservers move, and a listing can come down for reasons other than a sale. Confirm anything flagged with Jake. Atom and Spaceship's own marketplace prices are not re-checked; the 27 Spaceship-registered names are watched through their Dynadot listings. Names not listed on Dynadot are watched through nameservers until they appear there. Updated automatically every 6 hours by GitHub Actions using Dynadot's official API and public DNS. The radar bearing, run ID and Gini index are presentation: they don't add information beyond the prices and statuses.</p>
   </div>
 </div>
 
@@ -343,7 +344,7 @@ window.dash = (() => {
         const askNow = onDyn ? (listed ? (offer ? 'Make offer' : ask) : null) : (listed ? ask : base);
         return { domain: d.domain, status, ask_now: askNow, ask_oct31: offer && base === null ? 'Make offer' : base,
           change: (typeof askNow === 'number' && base !== null) ? askNow - base : null,
-          nameservers: ns || '', group: d.priority, venue: d.venue, last_change: last };
+          nameservers: ns || '', group: d.priority, developed: !!d.developed, venue: d.venue, last_change: last };
       });
     },
   });
@@ -367,7 +368,7 @@ window.dash = (() => {
         watching: current.length, possible_sale: count('Possible sale'), off_dynadot: count('Off Dynadot'),
         new_nameservers: count('New nameservers'), price_change: count('Price change'),
         needs_look: current.filter((r) => r.status !== 'Watching').length,
-        on_dynadot: lastDyn.on_dynadot ?? null, ask_total: total, top1_share: top1, top1_names: topN, gini,
+        on_dynadot: lastDyn.on_dynadot ?? null, dyn_base: current.filter((r) => r.venue === 'Dynadot').length, ask_total: total, top1_share: top1, top1_names: topN, gini,
         dns_rate: last.dns_ok != null ? last.dns_ok / current.length : null,
         last_check: last.at || null, last_status: last.status || null, last_dynadot: last.dynadot || null, sweeps: checks.length,
       }];
@@ -467,7 +468,7 @@ window.dash = (() => {
     const [t, c] = map[v] || (v ? ['DEGRADED', 'warn'] : ['—', '']);
     el.textContent = t; el.className = c;
   });
-  dash.draw('lock', (el) => { const r = sum(); el.textContent = r && r.on_dynadot != null ? `${d3.format(',')(r.on_dynadot)}/1,352` : '—'; el.className = r && r.on_dynadot != null ? (r.on_dynadot >= 1352 ? 'ok' : 'warn') : ''; });
+  dash.draw('lock', (el) => { const r = sum(); el.textContent = r && r.on_dynadot != null ? `${d3.format(',')(r.on_dynadot)}/${d3.format(',')(r.dyn_base)}` : '—'; el.className = r && r.on_dynadot != null ? (r.on_dynadot >= r.dyn_base ? 'ok' : 'warn') : ''; });
   const renderCountdown = (el) => {
     const now = new Date(); let next = null;
     for (let d = 0; d < 2 && !next; d++) for (const h of SCHEDULE_UTC_HOURS) {
@@ -711,7 +712,7 @@ window.dash = (() => {
   const filtered = () => {
     const d = dash.data('current'); if (d.status !== 'ok') return null;
     const p = dash.params(), view = p.view || 'all', q = (p.q || '').toLowerCase();
-    const rows = d.data.filter((r) => (view === 'changed' ? r.status !== 'Watching' : view === 'priority' ? r.group === 'Priority 101' : true) && (!q || r.domain.includes(q)));
+    const rows = d.data.filter((r) => (view === 'changed' ? r.status !== 'Watching' : view === 'priority' ? r.group === 'Priority 101' : view === 'developed' ? r.developed : true) && (!q || r.domain.includes(q)));
     const key = p.sort || 'status', dir = (p.dir || 'asc') === 'asc' ? 1 : -1;
     const val = (r) => key === 'status' ? jwSev[r.status] : r[key];
     return rows.sort((a, b) => {
@@ -735,7 +736,7 @@ window.dash = (() => {
       td(r.ask_now === null ? (r.venue === 'Dynadot' ? 'Not listed' : '—') : jwMoney(r.ask_now), 'num' + (r.ask_now === null ? ' jw-dim' : ''));
       td(jwMoney(r.ask_oct31), 'num jw-dim');
       td(r.change === null || r.change === 0 ? '—' : (r.change > 0 ? '+' : '−') + jwMoney(Math.abs(r.change)), 'num ' + (r.change > 0 ? 'jw-up' : r.change < 0 ? 'jw-down' : 'jw-dim'));
-      td(r.nameservers || '—', 'jw-hide-sm jw-dim'); td(r.group, 'jw-hide-sm jw-dim'); td(r.last_change ? jwTime(r.last_change) : '—', 'jw-hide-sm jw-dim');
+      td(r.nameservers || '—', 'jw-hide-sm jw-dim'); td(r.group + (r.developed ? ' · Developed' : ''), 'jw-hide-sm jw-dim'); td(r.last_change ? jwTime(r.last_change) : '—', 'jw-hide-sm jw-dim');
       frag.append(tr);
     }
     el.append(frag);

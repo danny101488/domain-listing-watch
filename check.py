@@ -125,6 +125,29 @@ def calibrate():
     print(f"calibrated: {len(fees)} renewal fees, kept {sum(1 for e in keep if e['at'] == AT)} real event(s)")
 
 
+def add_names():
+    """Add names from add_names.json (Jake's portfolio list) to the watch; their first check sets the baseline."""
+    a = load("add_names.json", None)
+    st = load("state.json", {})
+    if not a or st.get("added") == a["added_at"]:
+        return
+    S, dm = st["domains"], load("domains.json", [])
+    have, dev, n = {r["domain"] for r in dm}, set(a.get("developed", [])), 0
+    for d in a["names"]:
+        if d not in have:
+            dm.append({"domain": d, "tld": "." + d.split(".")[-1], "priority": "Portfolio", "venue": "Pending first check",
+                       "ask_oct31": None, "ask_note": "", "ns_oct31": "", "added": a["added_at"]})
+            n += 1
+        if d not in S:
+            S[d] = {"p": "?", "ns": ""}
+    for r in dm:
+        r["developed"] = r["domain"] in dev
+    st["added"] = a["added_at"]
+    save("state.json", st)
+    save("domains.json", dm)
+    print(f"added {n} names from {a.get('source', 'add_names.json')}; {len(dev)} marked developed")
+
+
 def get_json(url, headers, timeout=30):
     req = urllib.request.Request(url, headers={"User-Agent": UA, **headers})
     try:
@@ -217,6 +240,7 @@ def money(p):
 def main():
     bootstrap()
     calibrate()
+    add_names()
     key = os.environ.get("DYNADOT_API_KEY", "").strip()
     st = load("state.json", {})
     S = st["domains"]
@@ -261,7 +285,7 @@ def main():
     dns_ok = sum(v is not None for v in ns.values())
 
     # 3) Sanity checks before trusting the listing data.
-    was = sum(1 for d in names if S[d]["p"] != "")
+    was = sum(1 for d in names if S[d]["p"] not in ("", "?"))
     now_listed = sum(1 for d in names if cur.get(d, "") != "")
     note = ""
     if dyn == "ok" and errors > len(names) * 0.1:
@@ -269,14 +293,21 @@ def main():
     if dyn == "ok" and now_listed < was * 0.9:
         dyn, note = "export_incomplete", f"only {now_listed} of {was} listings returned; ignored"
     if dyn == "ok":
-        moved = sum(1 for d in names if d in cur and cur[d] not in ("", S[d]["p"]) and S[d]["p"] != "")
+        moved = sum(1 for d in names if d in cur and cur[d] not in ("", S[d]["p"]) and S[d]["p"] not in ("", "?"))
         if st.get("source") != "api" and moved > len(names) * 0.05:
             dyn, note = "price_format_check", f"{moved} prices differ on the first API run; held for review"
 
     # 4) Diff and record.
-    ev = []
+    ev, first = [], set()
     for d in names:
         s = S[d]
+        if s["p"] == "?":  # newly added name: this check sets its baseline, no events
+            if dyn == "ok" and d in cur:
+                s["p"] = cur[d]
+                first.add(d)
+            if ns.get(d):
+                s["ns"] = ns[d]
+            continue
         if dyn == "ok" and d in cur:
             p = cur[d]
             if s["p"] != "" and p == "":
@@ -300,6 +331,18 @@ def main():
     for e in ev:
         e["source"] = "Public DNS (dns.google)" if e["kind"] == "nameservers" else "Dynadot API"
     changes.extend(ev)
+    if first:  # record the new names' starting point in domains.json
+        dm = load("domains.json", [])
+        for r in dm:
+            if r["domain"] in first and r.get("venue") == "Pending first check":
+                p = S[r["domain"]]["p"]
+                r["venue"] = "Dynadot" if p != "" else "Not listed"
+                r["ask_oct31"] = float(p) if p not in ("", "o") else None
+                r["ask_note"] = "Make offer" if p == "o" else ""
+                r["ns_oct31"] = S[r["domain"]]["ns"]
+                r["baseline_at"] = at
+        save("domains.json", dm)
+        note = (note + "; " if note else "") + f"baseline set for {len(first)} newly added names"
 
     bad_dns = len(names) - dns_ok
     status = "ok" if dyn == "ok" and bad_dns <= len(names) * 0.1 else ("failed" if dyn != "ok" and bad_dns > len(names) * 0.1 else "partial")
