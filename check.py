@@ -5,8 +5,11 @@ restricted key in the DYNADOT_API_KEY secret) and its public nameservers
 (dns.google), compares with the last state, and appends any changes.
 Standard library only. Writes domains.json, state.json, changes.json, checks.json.
 """
+import base64
 import concurrent.futures as cf
 import datetime as dt
+import hashlib
+import hmac
 import json
 import os
 import sys
@@ -14,6 +17,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+import uuid
 
 API = "https://api.dynadot.com/restful/v2/aftermarket/listings/{}?currency=USD"
 UA = "domain-listing-watch/1.0 (+github actions)"
@@ -96,14 +100,30 @@ def get_json(url, headers, timeout=30):
 samples = []
 
 
+def headers(url, key):
+    """Bearer key, plus X-Signature (HMAC-SHA256 of key, path, request id, body) when a secret is set."""
+    h = {"Authorization": "Bearer " + key, "Accept": "application/json"}
+    secret = os.environ.get("DYNADOT_API_SECRET", "").strip()
+    if secret:
+        rid = str(uuid.uuid4())
+        p = urllib.parse.urlsplit(url)
+        path = p.path + ("?" + p.query if p.query else "")
+        msg = key + "\n" + path + "\n" + rid + "\n"
+        h["X-Request-ID"] = rid
+        h["X-Signature"] = base64.b64encode(hmac.new(secret.encode(), msg.encode(), hashlib.sha256).digest()).decode()
+    return h
+
+
 def listing(domain, key):
     """Returns '' (not listed), 'o' (listed, no fixed price), a price string, or None (error)."""
     url = API.format(urllib.parse.quote(domain))
     for attempt in range(4):
-        code, j = get_json(url, {"Authorization": "Bearer " + key, "Accept": "application/json"})
+        code, j = get_json(url, headers(url, key))
         inner = j.get("code") if isinstance(j, dict) else None
         if code in (401, 403) or inner in (401, 403):
-            raise PermissionError(f"Dynadot rejected the API key (HTTP {code}, code {inner})")
+            body = json.dumps(j)[:400].replace(key, "<key>")
+            raise PermissionError(f"Dynadot refused the request (HTTP {code}, code {inner}, "
+                                  f"signed={'X-Signature' in headers(url, key)}): {body}")
         if code == 404 or inner == 404:
             return ""
         if code == 200 and inner in (None, 200, 0, "200"):
