@@ -340,7 +340,7 @@ window.dash = (() => {
         const nsMoved = !!d.ns_oct31 && ns !== d.ns_oct31;
         const off = onDyn && !listed;
         const priceMoved = listed && onDyn && (ask !== base || offer !== (d.ask_note === 'Make offer'));
-        const status = (off && nsMoved) || ns === 'NXDOMAIN' ? 'Possible sale' : off ? 'Off Dynadot' : nsMoved ? 'New nameservers' : priceMoved ? 'Price change' : (!onDyn && listed) ? 'Now on Dynadot' : 'Watching';
+        const status = (off && nsMoved) || (ns === 'NXDOMAIN' && d.ns_oct31 !== 'NXDOMAIN') ? 'Possible sale' : off ? 'Off Dynadot' : nsMoved ? 'New nameservers' : priceMoved ? 'Price change' : (!onDyn && listed) ? 'Now on Dynadot' : 'Watching';
         const askNow = onDyn ? (listed ? (offer ? 'Make offer' : ask) : null) : (listed ? ask : base);
         return { domain: d.domain, status, ask_now: askNow, ask_oct31: offer && base === null ? 'Make offer' : base,
           change: (typeof askNow === 'number' && base !== null) ? askNow - base : null,
