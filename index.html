@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Domain Listing Watch</title>
+<meta name="description" content="Live watch of a .si domain portfolio: Dynadot listing prices and nameservers, checked every 6 hours.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+window.dash = (() => {
+  const data = {}, calcs = [], draws = {}, onDatas = [], made = new WeakMap();
+  const defaults = { view: 'all', q: null, sort: 'status', dir: 'asc', skin: 'orbital' };
+  let params = { ...defaults };
+  const compute = () => { for (const [id, c] of calcs) { try { data[id] = { status: 'ok', data: c.fn(...c.inputs.map((i) => (data[i] && data[i].data) || [])) }; } catch (e) { data[id] = { status: 'error', data: [], message: String(e) }; console.error(id, e); } } };
+  const runDraw = (name) => { const d = draws[name]; if (!d) return; document.querySelectorAll('[data-draw="' + name + '"]').forEach((el) => {
+    try { if (typeof d === 'function') d(el); else { if (!made.has(el)) made.set(el, d.mount ? d.mount(el) || {} : {}); if (d.update) d.update(el, made.get(el)); } } catch (e) { console.error(name, e); } }); };
+  const render = () => { onDatas.forEach((f) => { try { f(); } catch (e) { console.error(e); } }); Object.keys(draws).forEach(runDraw);
+    document.body.classList.toggle('skin-bg-linear', params.skin === 'linear'); document.body.classList.toggle('skin-bg-phosphor', params.skin === 'phosphor'); };
+  let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(render, 150); });
+  return {
+    calc: (id, o) => { calcs.push([id, o]); },
+    loader: () => {},
+    data: (id) => data[id] || { status: 'loading', data: [] },
+    draw: (name, fn) => { if (fn === undefined) return runDraw(name); draws[name] = fn; },
+    onData: (fn) => { onDatas.push(fn); },
+    params: () => ({ ...params }),
+    setParams: (p) => { params = { ...params, ...p }; render(); },
+    resetParams: () => { params = { ...defaults }; render(); },
+    refresh: () => {}, setLink: () => {},
+    colors: ['#36e2ff', '#9d7bff', '#ffb020', '#3dffa8', '#ff7a3d', '#ff3d71', '#7189a6', '#e8f7ff'],
+    _load: (sets) => { Object.assign(data, sets); compute(); render(); },
+  };
+})();
+</script>
+</head>
+<body>
+<style>
+  html, body { background: #04060c; margin: 0; }
+  body.skin-bg-linear { background: #010102; } body.skin-bg-phosphor { background: #010603; }
+  .jw { --cds-dur-slow: .6s; --cds-ease-out: cubic-bezier(.2,.8,.2,1); min-height: 100vh; }
+
+  .jw { --bg: #04060c; --s1: #0a111d; --s2: #0e1828; --s3: #132036; --line: rgba(54, 226, 255, .14); --line2: rgba(54, 226, 255, .32);
+        --ink: #e8f7ff; --ink2: #b9cde2; --ink3: #7189a6; --ink4: #4b5f7a;
+        --c1: #36e2ff; --c1-dim: rgba(54, 226, 255, .55); --c1-soft: rgba(54, 226, 255, .14); --c2: #9d7bff;
+        --good: #3dffa8; --warn: #ffb020; --bad: #ff3d71;
+        --jw-sale: var(--bad); --jw-off: var(--warn); --jw-ns: #ff7a3d; --jw-price: var(--c2);
+        --grid: rgba(54, 226, 255, .05); --glow: 0 0 22px rgba(54, 226, 255, .35); --scan: .045; --radius: 4px;
+        --jw-display: "SF Pro Display", -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
+        --jw-text: "SF Pro Text", -apple-system, BlinkMacSystemFont, system-ui, "Segoe UI", Roboto, sans-serif;
+        --jw-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+        position: relative; isolation: isolate; overflow: hidden; color-scheme: dark; color: var(--ink);
+        font: 400 14px/1.5 var(--jw-text);
+        background:
+          radial-gradient(1200px 600px at 85% -10%, var(--c1-soft), transparent 60%),
+          linear-gradient(var(--grid) 1px, transparent 1px) 0 0 / 40px 40px,
+          linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0 / 40px 40px,
+          var(--bg);
+        padding-block: 0 48px; padding-left: max(16px, 2.6vw); padding-right: max(16px, 2.6vw); }
+  .jw.skin-phosphor { --bg: #010603; --s1: #04100a; --s2: #06170e; --s3: #0a2015; --line: rgba(57, 255, 136, .16); --line2: rgba(57, 255, 136, .36);
+        --ink: #d4ffe6; --ink2: #9fe8bd; --ink3: #4f9e72; --ink4: #2f6a49; --c1: #39ff88; --c1-dim: rgba(57, 255, 136, .55); --c1-soft: rgba(57, 255, 136, .12); --c2: #b8ff5c;
+        --good: #39ff88; --warn: #ffd23d; --bad: #ff4d4d; --jw-ns: #ff9a3d; --grid: rgba(57, 255, 136, .045); --glow: 0 0 18px rgba(57, 255, 136, .45); --scan: .07; --radius: 2px; }
+  .jw.skin-linear { --bg: #010102; --s1: #0f1011; --s2: #141516; --s3: #18191a; --line: #23252a; --line2: #34343a;
+        --ink: #f7f8f8; --ink2: #d0d6e0; --ink3: #8a8f98; --ink4: #62666d; --c1: #5e6ad2; --c1-dim: rgba(130, 143, 255, .6); --c1-soft: rgba(94, 106, 210, .1); --c2: #828fff;
+        --good: #27a644; --warn: #d4a017; --bad: #eb5757; --jw-ns: #e0703a; --grid: transparent; --glow: none; --scan: 0; --radius: 12px; }
+  .jw.skin-linear { background: var(--bg); }
+  .jw.skin-phosphor .jw-title, .jw.skin-phosphor .jw-kpi-n, .jw.skin-phosphor .jw-sys dd { font-family: var(--jw-mono); }
+
+  .jw-scan { position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: var(--scan);
+        background: repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 3px); }
+  .jw-in { position: relative; z-index: 1; display: grid; gap: 14px; max-width: 1360px; margin-inline: auto; }
+  .jw b { font-weight: 600; color: var(--ink); }
+
+  .jw-ticker { overflow: hidden; border-bottom: 1px solid var(--line); margin-inline: calc(-1 * max(16px, 2.6vw)); padding: 9px 0; font: 500 12px/1 var(--jw-mono); letter-spacing: .06em; color: var(--ink3); white-space: nowrap; background: color-mix(in oklab, var(--bg) 70%, transparent); }
+  .jw-ticker .track { display: inline-flex; gap: 36px; padding-left: 100%; }
+  .jw-ticker .it { display: inline-flex; gap: 8px; align-items: center; }
+  .jw-ticker .it i { width: 6px; height: 6px; transform: rotate(45deg); background: var(--c); display: inline-block; }
+  .jw-ticker .d { color: var(--ink); text-transform: uppercase; }
+
+  .jw-hud { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 20px 32px; align-items: end; padding-top: 22px; }
+  @media (max-width: 900px) { .jw-hud { grid-template-columns: 1fr; } }
+  .jw-eyebrow { font: 500 11px/1.4 var(--jw-mono); letter-spacing: .18em; text-transform: uppercase; color: var(--c1-dim); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .jw-live { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 3px color-mix(in oklab, var(--good) 22%, transparent), 0 0 12px var(--good); flex: none; }
+  .jw-live.is-warn { background: var(--warn); box-shadow: 0 0 0 3px color-mix(in oklab, var(--warn) 22%, transparent), 0 0 12px var(--warn); }
+  .jw-live.is-bad { background: var(--bad); box-shadow: 0 0 0 3px color-mix(in oklab, var(--bad) 22%, transparent), 0 0 12px var(--bad); }
+  .jw-title { font: 700 clamp(1.8rem, 4.4vw, 3.3rem)/1.02 var(--jw-display); letter-spacing: .01em; text-transform: uppercase; margin: 10px 0 10px; text-wrap: balance; text-shadow: var(--glow); }
+  .jw-title span { color: var(--c1); }
+  .jw.skin-linear .jw-title { text-transform: none; letter-spacing: -1.4px; }
+  .jw-lede { font-size: 16px; line-height: 1.55; color: var(--ink3); max-width: 64ch; margin: 0; }
+  .jw-sys { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+  .jw-sys > div { background: color-mix(in oklab, var(--s1) 92%, transparent); padding: 10px 12px; min-width: 0; }
+  .jw-sys dt { font: 500 10px/1.2 var(--jw-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink4); }
+  .jw-sys dd { margin: 5px 0 0; font: 600 15px/1.2 var(--jw-mono); color: var(--ink); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .jw-sys dd.ok { color: var(--good); } .jw-sys dd.warn { color: var(--warn); } .jw-sys dd.bad { color: var(--bad); }
+
+  .jw-skins { display: flex; gap: 6px; align-items: center; font: 500 10px/1 var(--jw-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink4); }
+  .jw-skins button { font: 500 10px/1 var(--jw-mono); letter-spacing: .14em; text-transform: uppercase; color: var(--ink3); background: transparent; border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 9px; cursor: pointer; }
+  .jw-skins button[aria-pressed="true"] { color: var(--bg); background: var(--c1); border-color: var(--c1); }
+
+  .jw-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 10.5rem), 1fr)); gap: 10px; }
+  .jw-kpi { position: relative; background: color-mix(in oklab, var(--s1) 90%, transparent); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px 12px; display: grid; gap: 6px; }
+  .jw-kpi::before { content: ""; position: absolute; left: -1px; top: -1px; width: 14px; height: 14px; border-left: 2px solid var(--k, var(--c1)); border-top: 2px solid var(--k, var(--c1)); border-top-left-radius: var(--radius); }
+  .jw-kpi-l { font: 500 10px/1.3 var(--jw-mono); letter-spacing: .16em; text-transform: uppercase; color: var(--ink3); }
+  .jw-kpi-n { font: 600 clamp(1.7rem, 2.8vw, 2.4rem)/1 var(--jw-display); letter-spacing: -.5px; font-variant-numeric: tabular-nums; color: var(--ink); text-shadow: var(--glow); }
+  .jw-kpi-s { font: 11px/1.3 var(--jw-mono); color: var(--ink4); }
+  .k-sale { --k: var(--jw-sale); } .k-off { --k: var(--jw-off); } .k-ns { --k: var(--jw-ns); } .k-price { --k: var(--jw-price); } .k-good { --k: var(--good); }
+
+  .jw-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 14px; }
+  .jw-panel { position: relative; grid-column: span 12; background: color-mix(in oklab, var(--s1) 88%, transparent); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px 18px; min-width: 0; backdrop-filter: blur(2px); }
+  .jw-panel::before, .jw-panel::after { content: ""; position: absolute; width: 18px; height: 18px; pointer-events: none; }
+  .jw-panel::before { left: -1px; top: -1px; border-left: 2px solid var(--c1); border-top: 2px solid var(--c1); border-top-left-radius: var(--radius); }
+  .jw-panel::after { right: -1px; bottom: -1px; border-right: 2px solid var(--c1); border-bottom: 2px solid var(--c1); border-bottom-right-radius: var(--radius); }
+  .jw.skin-linear .jw-panel::before, .jw.skin-linear .jw-panel::after, .jw.skin-linear .jw-kpi::before { display: none; }
+  .w7 { grid-column: span 7; } .w5 { grid-column: span 5; } .w6 { grid-column: span 6; } .w8 { grid-column: span 8; } .w4 { grid-column: span 4; }
+  @media (max-width: 980px) { .w7, .w5, .w6, .w8, .w4 { grid-column: span 12; } }
+  .jw-ph { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .jw-ph h2 { font: 600 15px/1.3 var(--jw-display); letter-spacing: .02em; margin: 0; color: var(--ink); }
+  .jw-ph .code { font: 500 10px/1 var(--jw-mono); letter-spacing: .18em; text-transform: uppercase; color: var(--c1-dim); }
+  .jw-note { font-size: 12.5px; color: var(--ink3); margin: 6px 0 14px; line-height: 1.5; max-width: 76ch; }
+  .jw-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font: 11px/1.3 var(--jw-mono); color: var(--ink3); margin-bottom: 12px; }
+  .jw-legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .jw-sw { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--sw); box-shadow: 0 0 8px var(--sw); }
+  .sw-watch { --sw: var(--c1-dim); } .sw-sale { --sw: var(--jw-sale); } .sw-off { --sw: var(--jw-off); } .sw-ns { --sw: var(--jw-ns); } .sw-price { --sw: var(--jw-price); }
+
+  .jw-chart { position: relative; min-height: 220px; }
+  .jw-radar { min-height: 360px; }
+  .jw-chart svg { display: block; overflow: visible; }
+  .jw-chart text { font-family: var(--jw-mono); }
+  .jw-tip { position: absolute; pointer-events: none; background: var(--s3); border: 1px solid var(--line2); border-radius: var(--radius);
+        box-shadow: 0 10px 30px rgb(0 0 0 / .55), 0 0 0 1px rgb(0 0 0 / .2); padding: 8px 10px; font: 12px/1.45 var(--jw-mono); white-space: nowrap; z-index: 3; color: var(--ink2); }
+  .jw-tip .d { font-weight: 700; color: var(--ink); } .jw-tip .s { color: var(--ink3); }
+
+  .jw-wall { position: relative; min-height: 220px; background: color-mix(in oklab, var(--bg) 80%, transparent); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px; }
+  .jw-wall svg { display: block; }
+
+  .jw-stream { list-style: none; margin: 0; padding: 12px 14px; display: grid; gap: 2px; max-height: 360px; overflow: auto; font: 12.5px/1.6 var(--jw-mono); background: color-mix(in oklab, var(--bg) 85%, transparent); border: 1px solid var(--line); border-radius: var(--radius); }
+  .jw-stream li { display: grid; grid-template-columns: auto auto 1fr; gap: 0 12px; color: var(--ink3); align-items: baseline; }
+  .jw-stream .t { color: var(--ink4); }
+  .jw-stream .k { color: var(--c); font-weight: 700; letter-spacing: .06em; min-width: 7.5rem; }
+  .jw-stream .m { color: var(--ink2); overflow-wrap: anywhere; } .jw-stream .m b { color: var(--ink); }
+  .jw-stream .cursor { color: var(--c1); }
+  .c-sale { --c: var(--jw-sale); } .c-off { --c: var(--jw-off); } .c-ns { --c: var(--jw-ns); } .c-price { --c: var(--jw-price); } .c-on { --c: var(--good); } .c-watch { --c: var(--ink4); }
+
+  .jw-chip { display: inline-flex; align-items: center; gap: 6px; font: 500 11px/1 var(--jw-mono); letter-spacing: .04em; padding: 4px 8px; border-radius: var(--radius); white-space: nowrap;
+        background: color-mix(in oklab, var(--c) 12%, transparent); border: 1px solid color-mix(in oklab, var(--c) 45%, transparent); color: var(--ink); }
+  .jw-chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--c); box-shadow: 0 0 6px var(--c); }
+
+  .jw-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+  .jw-seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); padding: 3px; gap: 2px; }
+  .jw-seg button { font: 500 11px/1 var(--jw-mono); letter-spacing: .1em; text-transform: uppercase; border: 0; background: transparent; color: var(--ink3); padding: 7px 12px; border-radius: calc(var(--radius) - 1px); cursor: pointer; }
+  .jw-seg button[aria-pressed="true"] { background: var(--c1-soft); color: var(--c1); box-shadow: inset 0 0 0 1px var(--line2); }
+  .jw-q { font: 400 13px/1.2 var(--jw-mono); padding: 9px 12px; border-radius: var(--radius); border: 1px solid var(--line); background: color-mix(in oklab, var(--bg) 80%, transparent); color: var(--ink); min-width: 0; flex: 1 1 12rem; max-width: 24rem; }
+  .jw-q::placeholder { color: var(--ink4); }
+  .jw-q:focus { outline: none; border-color: var(--c1); box-shadow: 0 0 0 3px var(--c1-soft); }
+  .jw button:focus-visible, .jw a:focus-visible { outline: 2px solid var(--c1); outline-offset: 2px; }
+  .jw-shown { font: 11px/1 var(--jw-mono); letter-spacing: .1em; color: var(--ink4); margin-left: auto; text-transform: uppercase; }
+  .jw-tablebox { max-height: 620px; overflow: auto; border: 1px solid var(--line); border-radius: var(--radius); background: color-mix(in oklab, var(--bg) 85%, transparent); }
+  .jw-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .jw-table th { position: sticky; top: 0; background: var(--s2); text-align: left; color: var(--ink3); border-bottom: 1px solid var(--line2); padding: 0; z-index: 1; }
+  .jw-th button { font: 500 10.5px/1 var(--jw-mono); letter-spacing: .14em; text-transform: uppercase; color: inherit; background: none; border: 0; padding: 12px; cursor: pointer; width: 100%; text-align: inherit; white-space: nowrap; }
+  .jw-th[aria-sort="ascending"] button, .jw-th[aria-sort="descending"] button { color: var(--c1); }
+  .jw-th[aria-sort="ascending"] button::after { content: " \25B2"; } .jw-th[aria-sort="descending"] button::after { content: " \25BC"; }
+  .jw-table td { padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; color: var(--ink2); }
+  .jw-table tbody tr:hover td { background: var(--c1-soft); }
+  .jw-table .num, .jw-table th.num { text-align: right; }
+  .jw-table td.num { font-family: var(--jw-mono); font-size: 12.5px; }
+  .jw-table td a { font: 600 13px/1.2 var(--jw-mono); color: var(--ink); text-decoration: none; }
+  .jw-table td a:hover { color: var(--c1); }
+  .jw-up { color: var(--good) !important; } .jw-down { color: var(--bad) !important; } .jw-dim { color: var(--ink3) !important; }
+  .jw-foot { font-size: 12px; color: var(--ink4); line-height: 1.6; max-width: 92ch; padding-top: 6px; }
+  @media (max-width: 720px) { .jw-hide-sm { display: none; } .jw-panel { padding: 14px; } .jw-sys { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .jw-live { animation: jw-breathe 2.2s ease-in-out infinite; }
+    .jw-ticker .track { animation: jw-tick var(--dur, 60s) linear infinite; }
+    .jw-ticker:hover .track { animation-play-state: paused; }
+    .jw-sweep { animation: jw-spin 6s linear infinite; }
+    .jw-ping { animation: jw-ping 2s var(--cds-ease-out) infinite; }
+    .jw-hot { animation: jw-glow 1.6s ease-in-out infinite alternate; }
+    .jw-stream .cursor { animation: jw-blink 1s steps(1) infinite; }
+    .jw-wall.is-new rect { animation: jw-in var(--cds-dur-slow) var(--cds-ease-out) both; animation-delay: calc(var(--i) * 0.3ms); }
+  }
+  @media (prefers-reduced-motion: reduce) { .jw-ticker { overflow-x: auto; } .jw-ticker .track { padding-left: 0; } }
+  @keyframes jw-breathe { 50% { opacity: .55; } }
+  @keyframes jw-tick { to { transform: translateX(-100%); } }
+  @keyframes jw-spin { to { transform: rotate(360deg); } }
+  @keyframes jw-ping { from { transform: scale(1); opacity: .9; } to { transform: scale(3.2); opacity: 0; } }
+  @keyframes jw-glow { from { opacity: .45; } to { opacity: 1; } }
+  @keyframes jw-blink { 50% { opacity: 0; } }
+  @keyframes jw-in { from { opacity: 0; } to { opacity: 1; } }
+</style>
+
+<div class="jw skin-orbital">
+  <div class="jw-scan" aria-hidden="true"></div>
+  <div class="jw-in">
+    <div class="jw-ticker" data-draw="ticker" data-source="changes" aria-label="Latest changes"></div>
+
+    <header class="jw-hud" id="overview">
+      <div>
+        <div class="jw-eyebrow"><i class="jw-live" aria-hidden="true"></i><span>Surveillance array</span><span>//</span><span>.si portfolio</span><span>//</span><span>6h sweep cycle</span></div>
+        <h1 class="jw-title">Domain listing <span>watch</span></h1>
+        <p class="jw-lede">Since the Oct 31 audit, <b data-draw="kpi" data-source="summary" data-field="needs_look" data-row="0">—</b> of <b data-draw="kpi" data-source="summary" data-field="watching" data-row="0">—</b> names have changed. Last sweep <b data-draw="when" data-source="summary">—</b>.</p>
+      </div>
+      <div style="display: grid; gap: 10px;">
+        <div class="jw-skins" role="group" aria-label="Look"><span>Skin</span>
+          <button type="button" data-skin="orbital" aria-pressed="true">Orbital</button>
+          <button type="button" data-skin="phosphor" aria-pressed="false">Phosphor</button>
+          <button type="button" data-skin="linear" aria-pressed="false">Linear</button>
+        </div>
+        <dl class="jw-sys">
+          <div><dt>Run ID</dt><dd data-draw="runid" data-source="summary">—</dd></div>
+          <div><dt>Next sweep</dt><dd data-draw="countdown" data-source="summary">—</dd></div>
+          <div><dt>Dynadot link</dt><dd data-draw="link" data-source="summary">—</dd></div>
+          <div><dt>DNS resolve</dt><dd data-draw="pct" data-source="summary" data-field="dns_rate" data-row="0">—</dd></div>
+          <div><dt>Listing lock</dt><dd data-draw="lock" data-source="summary">—</dd></div>
+          <div><dt>Gini index</dt><dd data-draw="dec" data-source="summary" data-field="gini" data-row="0">—</dd></div>
+        </dl>
+      </div>
+    </header>
+
+    <div class="jw-kpis">
+      <div class="jw-kpi k-sale"><span class="jw-kpi-l">Possible sale</span><span class="jw-kpi-n" data-draw="kpi" data-source="summary" data-field="possible_sale" data-row="0">—</span><span class="jw-kpi-s">Off Dynadot + new nameservers</span></div>
+      <div class="jw-kpi k-off"><span class="jw-kpi-l">Off Dynadot</span><span class="jw-kpi-n" data-draw="kpi" data-source="summary" data-field="off_dynadot" data-row="0">—</span><span class="jw-kpi-s">Listing no longer exported</span></div>
+      <div class="jw-kpi k-ns"><span class="jw-kpi-l">New nameservers</span><span class="jw-kpi-n" data-draw="kpi" data-source="summary" data-field="new_nameservers" data-row="0">—</span><span class="jw-kpi-s">DNS moved since Oct 31</span></div>
+      <div class="jw-kpi k-price"><span class="jw-kpi-l">Price changed</span><span class="jw-kpi-n" data-draw="kpi" data-source="summary" data-field="price_change" data-row="0">—</span><span class="jw-kpi-s">Ask differs from Oct 31</span></div>
+      <div class="jw-kpi k-good"><span class="jw-kpi-l">On Dynadot now</span><span class="jw-kpi-n" data-draw="kpi" data-source="summary" data-field="on_dynadot" data-row="0">—</span><span class="jw-kpi-s">Of 1,325 at the audit</span></div>
+      <div class="jw-kpi"><span class="jw-kpi-l">Total asking</span><span class="jw-kpi-n" data-draw="money" data-source="summary" data-field="ask_total" data-row="0">—</span><span class="jw-kpi-s">Sum of current asks</span></div>
+    </div>
+
+    <div class="jw-grid">
+      <section class="jw-panel w7" id="radar">
+        <div class="jw-ph"><h2>Portfolio radar</h2><span class="code">MOD-01 // POLAR SCAN</span></div>
+        <p class="jw-note">Every name is a blip. Distance from the center is its asking price (outer ring = more expensive); its bearing is just a fixed spot so names don't overlap. Changed names flash in their status color. Hover a blip for details.</p>
+        <div class="jw-legend">
+          <span><i class="jw-sw sw-watch"></i>Unchanged</span><span><i class="jw-sw sw-price"></i>Price changed</span><span><i class="jw-sw sw-ns"></i>New nameservers</span><span><i class="jw-sw sw-off"></i>Off Dynadot</span><span><i class="jw-sw sw-sale"></i>Possible sale</span>
+        </div>
+        <div class="jw-chart jw-radar" data-draw="radar" data-source="current"></div>
+      </section>
+
+      <section class="jw-panel w5" id="dns">
+        <div class="jw-ph"><h2>Nameserver clusters</h2><span class="code">MOD-02 // DNS TOPOLOGY</span></div>
+        <p class="jw-note">Which DNS provider each name points at right now. A buyer usually moves a name to their own provider, so a slice growing outside these clusters is a sale signal.</p>
+        <div class="jw-chart" data-draw="donut" data-source="ns_mix"></div>
+        <div class="jw-ph" style="margin-top: 18px;"><h2>Extensions</h2><span class="code">MOD-03 // TLD SPLIT</span></div>
+        <p class="jw-note">Names and total asking price per extension.</p>
+        <div class="jw-chart" style="min-height: 140px;" data-draw="tlds" data-source="tld_mix"></div>
+      </section>
+
+      <section class="jw-panel w6" id="spectrum">
+        <div class="jw-ph"><h2>Price spectrum</h2><span class="code">MOD-04 // LOG-BIN HISTOGRAM</span></div>
+        <p class="jw-note">How many names sit at each asking price, on a log scale. Colored ticks above a bar mark names that changed.</p>
+        <div class="jw-chart" data-draw="spectrum" data-source="spectrum"></div>
+      </section>
+
+      <section class="jw-panel w6" id="concentration">
+        <div class="jw-ph"><h2>Value concentration</h2><span class="code">MOD-05 // LORENZ CURVE</span></div>
+        <p class="jw-note">Names sorted from most to least expensive. The further the curve bows from the diagonal, the more the total asking price rides on a few names. The top 1% of names carry <b data-draw="pct" data-source="summary" data-field="top1_share" data-row="0">—</b> of it.</p>
+        <div class="jw-chart" data-draw="lorenz" data-source="lorenz summary"></div>
+      </section>
+
+      <section class="jw-panel" id="wall">
+        <div class="jw-ph"><h2>Name matrix</h2><span class="code">MOD-06 // 1,352-CELL ARRAY</span></div>
+        <p class="jw-note">One cell per name, sorted by Oct 31 asking price. Brighter means a higher ask. Colored cells changed. Click a cell to find the name in the table.</p>
+        <div class="jw-wall" data-draw="wall" data-source="current"></div>
+      </section>
+
+      <section class="jw-panel w7" id="changes">
+        <div class="jw-ph"><h2>Event stream</h2><span class="code">MOD-07 // CHANGE LOG</span></div>
+        <p class="jw-note">Everything the sweeps have picked up, newest first. Leaving Dynadot or new nameservers is a signal to check, not proof of a sale.</p>
+        <ol class="jw-stream" data-draw="feed" data-source="changes"></ol>
+      </section>
+
+      <section class="jw-panel w5" id="checks">
+        <div class="jw-ph"><h2>Sweep telemetry</h2><span class="code">MOD-08 // RUN HISTORY</span></div>
+        <p class="jw-note">One bar per sweep. Green: everything read. Amber: partial (for example Dynadot signed out, nameservers only). Red: failed.</p>
+        <div class="jw-chart" style="min-height: 120px;" data-draw="checks" data-source="checks"></div>
+      </section>
+
+      <section class="jw-panel" id="names">
+        <div class="jw-ph"><h2>All names</h2><span class="code">MOD-09 // REGISTRY</span></div>
+        <p class="jw-note">Ask on Oct 31 is the audited Dynadot price (Spaceship for the 27 names not on Dynadot). Names link to the Dynadot listing.</p>
+        <div class="jw-tools">
+          <div class="jw-seg" role="group" aria-label="Show">
+            <button type="button" data-view="all" aria-pressed="true">All</button>
+            <button type="button" data-view="changed" aria-pressed="false">Changed</button>
+            <button type="button" data-view="priority" aria-pressed="false">Priority 101</button>
+          </div>
+          <input class="jw-q" id="jw-q" type="search" placeholder="Search names" aria-label="Search names">
+          <span class="jw-shown" data-draw="shown" data-source="current">—</span>
+        </div>
+        <div class="jw-tablebox">
+          <table class="jw-table" data-source="current" data-row-key="domain">
+            <thead><tr>
+              <th class="jw-th" data-field="domain" data-sort="domain"><button type="button">Name</button></th>
+              <th class="jw-th" data-field="status" data-sort="status"><button type="button">Status</button></th>
+              <th class="jw-th num" data-field="ask_now" data-sort="ask_now"><button type="button">Ask now</button></th>
+              <th class="jw-th num" data-field="ask_oct31" data-sort="ask_oct31"><button type="button">Ask Oct 31</button></th>
+              <th class="jw-th num" data-field="change" data-sort="change"><button type="button">Change</button></th>
+              <th class="jw-th jw-hide-sm" data-field="nameservers" data-sort="nameservers"><button type="button">Nameservers</button></th>
+              <th class="jw-th jw-hide-sm" data-field="group" data-sort="group"><button type="button">Group</button></th>
+              <th class="jw-th jw-hide-sm" data-field="last_change" data-sort="last_change"><button type="button">Last change</button></th>
+            </tr></thead>
+            <tbody data-draw="rows"></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <p class="jw-foot">What this can and can't see: the sweeps read Dynadot's listing export and each name's public nameservers. A sale through Atom, Spaceship or a private deal may not show until the listing comes down or the nameservers move, and a listing can come down for reasons other than a sale. Confirm anything flagged with Jake. Atom and Spaceship prices are not re-checked; the 27 Spaceship-only names are watched through nameservers only. Updated automatically every 6 hours by GitHub Actions using Dynadot's official API and public DNS. The radar bearing, run ID and Gini index are presentation: they don't add information beyond the prices and statuses.</p>
+  </div>
+</div>
+
+<script>
+  window.jwSev = { 'Possible sale': 0, 'Off Dynadot': 1, 'New nameservers': 2, 'Price change': 3, 'Now on Dynadot': 4, 'Watching': 5 };
+  window.jwClass = { 'Possible sale': 'c-sale', 'Off Dynadot': 'c-off', 'New nameservers': 'c-ns', 'Price change': 'c-price', 'Now on Dynadot': 'c-on', 'Watching': 'c-watch' };
+  window.jwFill = { 'Possible sale': 'var(--jw-sale)', 'Off Dynadot': 'var(--jw-off)', 'New nameservers': 'var(--jw-ns)', 'Price change': 'var(--jw-price)', 'Now on Dynadot': 'var(--good)' };
+  window.jwMoney = (v) => v === null || v === undefined || v === '' ? '—' : isNaN(+v) ? String(v) : '$' + d3.format(',')(Math.round(+v));
+  window.jwCompact = (v) => '$' + new Intl.NumberFormat('en', { notation: 'compact', maximumFractionDigits: 1 }).format(+v);
+  window.jwTime = (iso) => { if (!iso) return '—'; const d = new Date(iso); return isNaN(d) ? String(iso) : d.toLocaleString('en', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); };
+  window.jwStamp = (iso) => { const d = new Date(iso); if (isNaN(d)) return '—'; const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+  window.jwHash = (s) => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; };
+
+  dash.calc('current', {
+    title: 'Each name now',
+    description: 'The Oct 31 snapshot with every logged change applied in time order, and a status from the latest state.',
+    inputs: ['domains', 'changes'],
+    fn: (domains, changes) => {
+      const num = (v) => (v === null || v === undefined || v === '' || isNaN(+v)) ? null : +v;
+      const byName = new Map();
+      [...changes].sort((a, b) => String(a.at).localeCompare(String(b.at))).forEach((e) => { if (!byName.has(e.domain)) byName.set(e.domain, []); byName.get(e.domain).push(e); });
+      return domains.map((d) => {
+        const base = num(d.ask_oct31), onDyn = d.venue === 'Dynadot';
+        let listed = onDyn, ask = base, offer = d.ask_note === 'Make offer', ns = d.ns_oct31, last = '';
+        for (const e of byName.get(d.domain) || []) {
+          if (e.kind === 'price' || e.kind === 'on_dynadot') { listed = true; ask = num(e.after); offer = e.after === 'Make offer'; }
+          if (e.kind === 'off_dynadot') listed = false;
+          if (e.kind === 'nameservers') ns = e.after;
+          last = e.at;
+        }
+        const nsMoved = !!d.ns_oct31 && ns !== d.ns_oct31;
+        const off = onDyn && !listed;
+        const priceMoved = listed && onDyn && (ask !== base || offer !== (d.ask_note === 'Make offer'));
+        const status = (off && nsMoved) || ns === 'NXDOMAIN' ? 'Possible sale' : off ? 'Off Dynadot' : nsMoved ? 'New nameservers' : priceMoved ? 'Price change' : (!onDyn && listed) ? 'Now on Dynadot' : 'Watching';
+        const askNow = onDyn ? (listed ? (offer ? 'Make offer' : ask) : null) : (listed ? ask : base);
+        return { domain: d.domain, status, ask_now: askNow, ask_oct31: offer && base === null ? 'Make offer' : base,
+          change: (typeof askNow === 'number' && base !== null) ? askNow - base : null,
+          nameservers: ns || '', group: d.priority, venue: d.venue, last_change: last };
+      });
+    },
+  });
+
+  dash.calc('summary', {
+    title: 'Headline readouts',
+    description: 'Counts by status, total asking price, how concentrated the asks are (top-1% share and Gini index), and the latest sweep.',
+    inputs: ['current', 'checks'],
+    fn: (current, checks) => {
+      const count = (s) => current.filter((r) => r.status === s).length;
+      const byTime = [...checks].sort((a, b) => String(b.at).localeCompare(String(a.at)));
+      const last = byTime[0] || {};
+      const lastDyn = byTime.find((c) => c.on_dynadot !== null && c.on_dynadot !== undefined) || {};
+      const asks = current.map((r) => r.ask_now).filter((v) => typeof v === 'number' && v > 0).sort((a, b) => b - a);
+      const total = asks.reduce((s, v) => s + v, 0);
+      const topN = Math.max(1, Math.round(asks.length * 0.01));
+      const top1 = asks.slice(0, topN).reduce((s, v) => s + v, 0) / (total || 1);
+      const inc = [...asks].reverse(); const n = inc.length;
+      const gini = n ? inc.reduce((s, v, i) => s + (2 * (i + 1) - n - 1) * v, 0) / (n * total) : null;
+      return [{
+        watching: current.length, possible_sale: count('Possible sale'), off_dynadot: count('Off Dynadot'),
+        new_nameservers: count('New nameservers'), price_change: count('Price change'),
+        needs_look: current.filter((r) => r.status !== 'Watching').length,
+        on_dynadot: lastDyn.on_dynadot ?? null, ask_total: total, top1_share: top1, top1_names: topN, gini,
+        dns_rate: last.dns_ok != null ? last.dns_ok / current.length : null,
+        last_check: last.at || null, last_status: last.status || null, last_dynadot: last.dynadot || null, sweeps: checks.length,
+      }];
+    },
+  });
+
+  dash.calc('ns_mix', {
+    title: 'Nameserver clusters',
+    description: 'Names per DNS provider, from each name’s latest nameservers.',
+    inputs: ['current'],
+    fn: (current) => {
+      const m = new Map(); current.forEach((r) => { const k = r.nameservers || 'unknown'; m.set(k, (m.get(k) || 0) + 1); });
+      return [...m].map(([provider, names]) => ({ provider, names })).sort((a, b) => b.names - a.names);
+    },
+  });
+
+  dash.calc('tld_mix', {
+    title: 'Extensions',
+    description: 'Names and total current asking price per extension.',
+    inputs: ['current'],
+    fn: (current) => {
+      const m = new Map();
+      current.forEach((r) => { const t = '.' + r.domain.split('.').pop(); const o = m.get(t) || { tld: t, names: 0, ask: 0 }; o.names++; o.ask += typeof r.ask_now === 'number' ? r.ask_now : 0; m.set(t, o); });
+      return [...m.values()].sort((a, b) => b.names - a.names);
+    },
+  });
+
+  dash.calc('spectrum', {
+    title: 'Price spectrum',
+    description: 'Names per asking-price bin on a log scale (four bins per tenfold), with how many in each bin changed.',
+    inputs: ['current'],
+    fn: (current) => {
+      const bins = [];
+      for (let e = 3.5; e < 7.25; e += 0.25) bins.push({ lo: Math.round(10 ** e), hi: Math.round(10 ** (e + 0.25)), names: 0, changed: 0 });
+      current.forEach((r) => {
+        const v = typeof r.ask_now === 'number' ? r.ask_now : (typeof r.ask_oct31 === 'number' ? r.ask_oct31 : null);
+        if (!v) return;
+        const b = bins.find((x) => v >= x.lo && v < x.hi) || (v >= bins[bins.length - 1].hi ? bins[bins.length - 1] : bins[0]);
+        b.names++; if (r.status !== 'Watching') b.changed++;
+      });
+      return bins;
+    },
+  });
+
+  dash.calc('lorenz', {
+    title: 'Value concentration curve',
+    description: 'Share of total asking price held by the most expensive names, sampled at 101 points.',
+    inputs: ['current'],
+    fn: (current) => {
+      const asks = current.map((r) => r.ask_now).filter((v) => typeof v === 'number' && v > 0).sort((a, b) => b - a);
+      const total = asks.reduce((s, v) => s + v, 0) || 1; const cum = [0]; asks.forEach((v, i) => cum.push(cum[i] + v));
+      return Array.from({ length: 101 }, (_, i) => ({ names_share: i / 100, value_share: cum[Math.round(i / 100 * asks.length)] / total }));
+    },
+  });
+</script>
+
+<script>
+  const each = (sel, fn) => document.querySelectorAll(sel).forEach(fn);
+  each('.jw-skins button[data-skin]', (b) => b.addEventListener('click', () => dash.setParams({ skin: b.dataset.skin })));
+  each('.jw-seg button[data-view]', (b) => b.addEventListener('click', () => dash.setParams({ view: b.dataset.view })));
+  each('.jw-q', (q) => q.addEventListener('input', () => dash.setParams({ q: q.value.trim().toLowerCase() || null })));
+  each('.jw-th[data-sort] button', (b) => b.addEventListener('click', () => {
+    const key = b.parentElement.dataset.sort, p = dash.params();
+    const dir = p.sort === key ? (p.dir === 'asc' ? 'desc' : 'asc') : (['domain', 'status', 'nameservers', 'group'].includes(key) ? 'asc' : 'desc');
+    dash.setParams({ sort: key, dir });
+  }));
+  dash.onData(() => {
+    const p = dash.params(), skin = p.skin || 'orbital', view = p.view || 'all';
+    each('.jw', (el) => { el.classList.toggle('skin-orbital', skin === 'orbital'); el.classList.toggle('skin-phosphor', skin === 'phosphor'); el.classList.toggle('skin-linear', skin === 'linear'); });
+    each('.jw-skins button[data-skin]', (b) => b.setAttribute('aria-pressed', String(b.dataset.skin === skin)));
+    each('.jw-seg button[data-view]', (b) => b.setAttribute('aria-pressed', String(b.dataset.view === view)));
+    each('.jw-q', (q) => { if (q !== document.activeElement) q.value = p.q || ''; });
+    each('.jw-th[data-sort]', (th) => th.setAttribute('aria-sort', (p.sort || 'status') === th.dataset.sort ? ((p.dir || 'asc') === 'asc' ? 'ascending' : 'descending') : 'none'));
+    const s = dash.data('summary'), row = s.status === 'ok' ? s.data[0] : null;
+    each('.jw-live', (dot) => {
+      const st = row && row.last_status, stale = row && row.last_check && (Date.now() - new Date(row.last_check)) > 14 * 3600e3;
+      dot.classList.toggle('is-warn', st === 'partial' && !stale);
+      dot.classList.toggle('is-bad', st === 'failed' || !!stale);
+    });
+  });
+</script>
+
+<script>
+  const sum = () => (dash.data('summary').status === 'ok' ? dash.data('summary').data[0] : null);
+  const SCHEDULE_UTC_HOURS = [0, 6, 12, 18], SCHEDULE_MIN = 17; // 01:17 / 07:17 / 13:17 / 19:17 Bangkok
+  const tipAt = (tip, el, x, y) => { const tw = tip.node().offsetWidth, th = tip.node().offsetHeight; tip.style('left', Math.min(Math.max(0, x + 14), el.clientWidth - tw) + 'px').style('top', Math.max(0, Math.min(y + 14, el.clientHeight - th)) + 'px'); };
+
+  dash.draw('kpi', (el) => { const r = sum(); const v = r ? r[el.dataset.field] : null; el.textContent = v === null || v === undefined ? '—' : d3.format(',')(v); });
+  dash.draw('money', (el) => { const r = sum(); el.textContent = r ? jwCompact(r[el.dataset.field]) : '—'; });
+  dash.draw('pct', (el) => { const r = sum(); const v = r ? r[el.dataset.field] : null; el.textContent = v === null || v === undefined ? '—' : d3.format('.1%')(v); });
+  dash.draw('dec', (el) => { const r = sum(); const v = r ? r[el.dataset.field] : null; el.textContent = v === null || v === undefined ? '—' : d3.format('.3f')(v); });
+  dash.draw('when', (el) => { const r = sum(); el.textContent = r && r.last_check ? jwTime(r.last_check) : '—'; });
+  dash.draw('runid', (el) => { const r = sum(); el.textContent = r && r.last_check ? '0x' + jwHash(r.last_check).toString(16).toUpperCase().padStart(8, '0') : '—'; });
+  dash.draw('link', (el) => {
+    const r = sum(); const v = r && r.last_dynadot;
+    const map = { ok: ['LOCKED', 'ok'], dynadot_signed_out: ['AUTH LOST', 'bad'], dynadot_bot_check: ['BLOCKED', 'bad'] };
+    const [t, c] = map[v] || (v ? ['DEGRADED', 'warn'] : ['—', '']);
+    el.textContent = t; el.className = c;
+  });
+  dash.draw('lock', (el) => { const r = sum(); el.textContent = r && r.on_dynadot != null ? `${d3.format(',')(r.on_dynadot)}/1,325` : '—'; el.className = r && r.on_dynadot != null ? (r.on_dynadot >= 1325 ? 'ok' : 'warn') : ''; });
+  const renderCountdown = (el) => {
+    const now = new Date(); let next = null;
+    for (let d = 0; d < 2 && !next; d++) for (const h of SCHEDULE_UTC_HOURS) {
+      const c = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + d, h, SCHEDULE_MIN));
+      if (c > now) { next = c; break; }
+    }
+    const s = Math.max(0, Math.round((next - now) / 1000)), p = (n) => String(n).padStart(2, '0');
+    el.textContent = `T-${p(Math.floor(s / 3600))}:${p(Math.floor(s / 60) % 60)}:${p(s % 60)}`;
+  };
+  dash.draw('countdown', {
+    mount: (el) => ({ t: setInterval(() => renderCountdown(el), 1000) }),
+    update: (el) => renderCountdown(el),
+    unmount: (el, made) => clearInterval(made.t),
+  });
+
+  dash.draw('ticker', (el) => {
+    el.replaceChildren();
+    const d = dash.data('changes'); if (d.status !== 'ok') return;
+    const KIND = { price: ['PRICE', 'c-price'], off_dynadot: ['OFF DYNADOT', 'c-off'], on_dynadot: ['BACK ON DYNADOT', 'c-on'], nameservers: ['NS MOVE', 'c-ns'] };
+    const rows = [...d.data].sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, 24);
+    const track = document.createElement('div'); track.className = 'track';
+    const isM = (v) => v !== null && v !== '' && !isNaN(+v);
+    const items = rows.length ? rows : [{ kind: 'none' }];
+    for (const e of items) {
+      const it = document.createElement('span'); const [k, c] = KIND[e.kind] || ['ALL CLEAR', 'c-on']; it.className = 'it ' + c;
+      const i = document.createElement('i'); const dn = document.createElement('span'); dn.className = 'd'; dn.textContent = e.domain || 'No changes logged';
+      const t = document.createElement('span');
+      if (e.kind === 'price' && isM(e.before) && isM(e.after)) { const pct = (+e.after - +e.before) / +e.before; t.textContent = `${k} ${pct < 0 ? '▼' : '▲'} ${d3.format('.0%')(Math.abs(pct))}  ${jwMoney(e.before)} → ${jwMoney(e.after)}`; }
+      else t.textContent = k + (isM(e.before) ? `  WAS ${jwMoney(e.before)}` : '');
+      it.append(i, dn, t); track.append(it);
+    }
+    track.style.setProperty('--dur', Math.max(30, items.length * 9) + 's');
+    el.append(track);
+  });
+
+  dash.draw('radar', (el) => {
+    el.replaceChildren();
+    const d = dash.data('current'); if (d.status !== 'ok') return;
+    const S = Math.max(280, Math.min(el.clientWidth, 640)), c = S / 2, R = S / 2 - 30;
+    const r = d3.scaleLog([5000, 1e7], [R * 0.12, R]).clamp(true);
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${S} ${S}`).style('max-width', S + 'px').style('margin-inline', 'auto');
+    const defs = svg.append('defs');
+    const gid = 'jw-sw-' + Math.random().toString(36).slice(2, 7);
+    const lg = defs.append('linearGradient').attr('id', gid).attr('x1', 0).attr('y1', 0).attr('x2', 1).attr('y2', 0);
+    lg.append('stop').attr('offset', '0%').style('stop-color', 'var(--c1)').style('stop-opacity', 0);
+    lg.append('stop').attr('offset', '100%').style('stop-color', 'var(--c1)').style('stop-opacity', 0.32);
+    const g = svg.append('g');
+    [1e4, 5e4, 2.5e5, 1e6, 1e7].forEach((v, i) => {
+      g.append('circle').attr('cx', c).attr('cy', c).attr('r', r(v)).style('fill', 'none').style('stroke', i === 4 ? 'var(--line2)' : 'var(--line)').style('stroke-dasharray', i === 4 ? null : '2 4');
+      g.append('text').attr('x', c + 4).attr('y', c - r(v) - 4).style('fill', 'var(--ink4)').style('font-size', '10px').text(jwCompact(v));
+    });
+    for (let a = 0; a < 360; a += 30) {
+      const t = (a - 90) * Math.PI / 180;
+      g.append('line').attr('x1', c).attr('y1', c).attr('x2', c + Math.cos(t) * R).attr('y2', c + Math.sin(t) * R).style('stroke', 'var(--line)');
+      g.append('text').attr('x', c + Math.cos(t) * (R + 16)).attr('y', c + Math.sin(t) * (R + 16) + 3).attr('text-anchor', 'middle').style('fill', 'var(--ink4)').style('font-size', '9px').text(String(a).padStart(3, '0'));
+    }
+    for (let a = 0; a < 360; a += 5) { const t = (a - 90) * Math.PI / 180, l = a % 30 ? 4 : 8; g.append('line').attr('x1', c + Math.cos(t) * R).attr('y1', c + Math.sin(t) * R).attr('x2', c + Math.cos(t) * (R - l)).attr('y2', c + Math.sin(t) * (R - l)).style('stroke', 'var(--line2)'); }
+    const sweep = svg.append('g').attr('class', 'jw-sweep').style('transform-origin', `${c}px ${c}px`).style('transform-box', 'view-box');
+    const wedge = 50 * Math.PI / 180;
+    sweep.append('path').attr('d', `M${c},${c} L${c + R},${c} A${R},${R} 0 0,0 ${c + Math.cos(-wedge) * R},${c + Math.sin(-wedge) * R} Z`).attr('fill', `url(#${gid})`);
+    sweep.append('line').attr('x1', c).attr('y1', c).attr('x2', c + R).attr('y2', c).style('stroke', 'var(--c1)').style('stroke-width', 1.5).style('opacity', 0.8);
+    const pts = d.data.map((row) => {
+      const v = typeof row.ask_now === 'number' ? row.ask_now : (typeof row.ask_oct31 === 'number' ? row.ask_oct31 : null);
+      const ang = (jwHash(row.domain) / 4294967296) * Math.PI * 2, rad = v ? r(v) : R * 0.06;
+      return { row, x: c + Math.cos(ang) * rad, y: c + Math.sin(ang) * rad, hot: row.status !== 'Watching' };
+    });
+    const dots = svg.append('g');
+    dots.selectAll('circle').data(pts.filter((p) => !p.hot)).join('circle').attr('cx', (p) => p.x).attr('cy', (p) => p.y).attr('r', 1.8).style('fill', 'var(--c1)').style('fill-opacity', 0.55);
+    const hot = svg.append('g');
+    pts.filter((p) => p.hot).forEach((p) => {
+      const col = jwFill[p.row.status];
+      hot.append('circle').attr('class', 'jw-ping').attr('cx', p.x).attr('cy', p.y).attr('r', 5).style('fill', 'none').style('stroke', col).style('transform-origin', `${p.x}px ${p.y}px`).style('transform-box', 'view-box');
+      hot.append('circle').attr('cx', p.x).attr('cy', p.y).attr('r', 4.5).style('fill', col).style('filter', `drop-shadow(0 0 6px ${col})`);
+      hot.append('text').attr('x', p.x + 8).attr('y', p.y - 6).style('fill', 'var(--ink)').style('font-size', '10px').style('font-weight', 700).text(p.row.domain.toUpperCase());
+    });
+    svg.append('circle').attr('cx', c).attr('cy', c).attr('r', 3).style('fill', 'var(--c1)');
+    svg.append('text').attr('x', c).attr('y', c + R * 0.12 + 14).attr('text-anchor', 'middle').style('fill', 'var(--ink3)').style('font-size', '10px').text(`N=${d3.format(',')(pts.length)}`);
+    const del = d3.Delaunay.from(pts, (p) => p.x, (p) => p.y);
+    const tip = d3.select(el).append('div').attr('class', 'jw-tip').style('display', 'none');
+    const ring = svg.append('circle').attr('r', 7).style('fill', 'none').style('stroke', 'var(--ink)').style('display', 'none');
+    svg.on('mousemove', (event) => {
+      const [mx, my] = d3.pointer(event, svg.node()); const box = svg.node().getBoundingClientRect(); const k = S / box.width;
+      const p = pts[del.find(mx, my)]; if (!p || Math.hypot(p.x - mx, p.y - my) > 14 * k) { tip.style('display', 'none'); ring.style('display', 'none'); return; }
+      ring.attr('cx', p.x).attr('cy', p.y).style('display', null);
+      tip.style('display', null).html('');
+      tip.append('div').attr('class', 'd').text(p.row.domain);
+      tip.append('div').text(`${p.row.status} · ${jwMoney(p.row.ask_now)}`);
+      tip.append('div').attr('class', 's').text(`NS ${p.row.nameservers || '—'} · ${p.row.group}`);
+      const [ex, ey] = d3.pointer(event, el); tipAt(tip, el, ex, ey);
+    }).on('mouseleave', () => { tip.style('display', 'none'); ring.style('display', 'none'); })
+      .on('click', (event) => { const [mx, my] = d3.pointer(event, svg.node()); const p = pts[del.find(mx, my)]; if (p) { dash.setParams({ q: p.row.domain, view: 'all' }); document.getElementById('names')?.scrollIntoView({ behavior: 'smooth' }); } });
+  });
+
+  dash.draw('donut', (el) => {
+    el.replaceChildren();
+    const d = dash.data('ns_mix'); if (d.status !== 'ok') return;
+    const W = Math.max(260, el.clientWidth), S = Math.min(220, W * 0.5), R = S / 2;
+    const cols = ['var(--c1)', 'var(--c2)', 'var(--warn)', 'var(--good)', 'var(--jw-ns)', 'var(--bad)'];
+    const wrap = d3.select(el).append('div').style('display', 'flex').style('gap', '18px').style('align-items', 'center').style('flex-wrap', 'wrap');
+    const svg = wrap.append('svg').attr('width', S).attr('height', S).attr('viewBox', `0 0 ${S} ${S}`);
+    const g = svg.append('g').attr('transform', `translate(${R},${R})`);
+    const arcs = d3.pie().value((x) => x.names).sort(null).padAngle(0.015)(d.data);
+    g.selectAll('path').data(arcs).join('path').attr('d', d3.arc().innerRadius(R * 0.68).outerRadius(R - 2).cornerRadius(2)).style('fill', (a, i) => cols[i % cols.length]).style('fill-opacity', 0.85);
+    g.append('circle').attr('r', R * 0.6).style('fill', 'none').style('stroke', 'var(--line)').style('stroke-dasharray', '1 3');
+    g.append('text').attr('text-anchor', 'middle').attr('y', -2).style('fill', 'var(--ink)').style('font-size', `${Math.round(R * 0.32)}px`).style('font-weight', 700).text(d.data.length);
+    g.append('text').attr('text-anchor', 'middle').attr('y', R * 0.2).style('fill', 'var(--ink3)').style('font-size', '9px').style('letter-spacing', '.14em').text('CLUSTERS');
+    const total = d3.sum(d.data, (x) => x.names);
+    const list = wrap.append('div').style('display', 'grid').style('gap', '8px').style('flex', '1 1 10rem').style('min-width', '0');
+    d.data.forEach((x, i) => {
+      const r = list.append('div').style('display', 'grid').style('grid-template-columns', '10px 1fr auto').style('gap', '10px').style('align-items', 'center').style('font', '12px/1.3 var(--jw-mono)');
+      r.append('i').style('width', '10px').style('height', '10px').style('border-radius', '2px').style('background', cols[i % cols.length]);
+      r.append('span').style('color', 'var(--ink2)').style('overflow', 'hidden').style('text-overflow', 'ellipsis').text(x.provider);
+      r.append('span').style('color', 'var(--ink)').style('font-variant-numeric', 'tabular-nums').text(`${d3.format(',')(x.names)} · ${d3.format('.0%')(x.names / total)}`);
+    });
+  });
+
+  dash.draw('tlds', (el) => {
+    el.replaceChildren();
+    const d = dash.data('tld_mix'); if (d.status !== 'ok') return;
+    const W = Math.max(260, el.clientWidth), rowH = 26, lw = 44, endW = 150;
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${d.data.length * rowH}`);
+    const x = d3.scaleLinear([0, d3.max(d.data, (r) => r.names) || 1], [0, Math.max(30, W - lw - endW)]);
+    const g = svg.selectAll('g').data(d.data).join('g').attr('transform', (r, i) => `translate(0,${i * rowH})`);
+    g.append('text').attr('y', 16).style('fill', 'var(--ink2)').style('font-size', '12px').text((r) => r.tld);
+    g.append('rect').attr('x', lw).attr('y', 7).attr('height', 12).attr('width', W - lw - endW).attr('rx', 2).style('fill', 'var(--c1-soft)');
+    g.append('rect').attr('x', lw).attr('y', 7).attr('height', 12).attr('rx', 2).attr('width', (r) => Math.max(2, x(r.names))).style('fill', 'var(--c1)');
+    g.append('text').attr('x', W - endW + 10).attr('y', 16).style('fill', 'var(--ink)').style('font-size', '11.5px').text((r) => `${d3.format(',')(r.names)} · ${jwCompact(r.ask)}`);
+  });
+
+  dash.draw('spectrum', (el) => {
+    el.replaceChildren();
+    const d = dash.data('spectrum'); if (d.status !== 'ok') return;
+    const W = Math.max(280, el.clientWidth), H = 230, m = { l: 34, r: 8, t: 16, b: 26 };
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const x = d3.scaleBand(d.data.map((b, i) => i), [m.l, W - m.r]).padding(0.18);
+    const y = d3.scaleLinear([0, d3.max(d.data, (b) => b.names) || 1], [H - m.b, m.t]).nice();
+    y.ticks(4).forEach((t) => {
+      svg.append('line').attr('x1', m.l).attr('x2', W - m.r).attr('y1', y(t)).attr('y2', y(t)).style('stroke', 'var(--line)');
+      svg.append('text').attr('x', m.l - 6).attr('y', y(t) + 3).attr('text-anchor', 'end').style('fill', 'var(--ink4)').style('font-size', '10px').text(t);
+    });
+    const peak = d3.max(d.data, (b) => b.names) || 1;
+    svg.selectAll('rect.b').data(d.data).join('rect').attr('class', 'b').attr('x', (b, i) => x(i)).attr('width', x.bandwidth()).attr('y', (b) => y(b.names)).attr('height', (b) => y(0) - y(b.names)).attr('rx', 1.5)
+      .style('fill', (b) => d3.interpolateRgb(getComputedStyle(el).getPropertyValue('--c1-dim').trim() || '#36e2ff', getComputedStyle(el).getPropertyValue('--c2').trim() || '#9d7bff')(b.names / peak))
+      .style('filter', 'drop-shadow(0 0 4px var(--c1-soft))');
+    svg.selectAll('rect.c').data(d.data.filter((b) => b.changed)).join('rect').attr('class', 'c jw-hot').attr('x', (b) => x(d.data.indexOf(b))).attr('width', x.bandwidth()).attr('y', (b) => y(b.names) - 7).attr('height', 3).style('fill', 'var(--warn)');
+    [1e3, 1e4, 1e5, 1e6, 1e7].forEach((v) => { const i = d.data.findIndex((b) => b.lo >= v * 0.99); if (i >= 0) svg.append('text').attr('x', x(i)).attr('y', H - 8).style('fill', 'var(--ink3)').style('font-size', '10px').text(jwCompact(v)); });
+    const tip = d3.select(el).append('div').attr('class', 'jw-tip').style('display', 'none');
+    svg.selectAll('rect.h').data(d.data).join('rect').attr('class', 'h').attr('x', (b, i) => x(i)).attr('width', x.bandwidth()).attr('y', m.t).attr('height', H - m.t - m.b).style('fill', 'transparent')
+      .on('mousemove', (event, b) => { tip.style('display', null).html(''); tip.append('div').attr('class', 's').text(`${jwCompact(b.lo)} – ${jwCompact(b.hi)}`); tip.append('div').text(`${d3.format(',')(b.names)} names${b.changed ? ` · ${b.changed} changed` : ''}`); const [ex, ey] = d3.pointer(event, el); tipAt(tip, el, ex, ey); })
+      .on('mouseleave', () => tip.style('display', 'none'));
+  });
+
+  dash.draw('lorenz', (el) => {
+    el.replaceChildren();
+    const d = dash.data('lorenz'), r0 = sum(); if (d.status !== 'ok') return;
+    const W = Math.max(280, el.clientWidth), H = 230, m = { l: 40, r: 12, t: 12, b: 26 };
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`);
+    const x = d3.scaleLinear([0, 1], [m.l, W - m.r]), y = d3.scaleLinear([0, 1], [H - m.b, m.t]);
+    [0, .25, .5, .75, 1].forEach((t) => {
+      svg.append('line').attr('x1', x(0)).attr('x2', x(1)).attr('y1', y(t)).attr('y2', y(t)).style('stroke', 'var(--line)');
+      svg.append('text').attr('x', m.l - 6).attr('y', y(t) + 3).attr('text-anchor', 'end').style('fill', 'var(--ink4)').style('font-size', '10px').text(d3.format('.0%')(t));
+      svg.append('text').attr('x', x(t)).attr('y', H - 8).attr('text-anchor', t === 0 ? 'start' : t === 1 ? 'end' : 'middle').style('fill', 'var(--ink4)').style('font-size', '10px').text(d3.format('.0%')(t));
+    });
+    svg.append('line').attr('x1', x(0)).attr('y1', y(0)).attr('x2', x(1)).attr('y2', y(1)).style('stroke', 'var(--ink4)').style('stroke-dasharray', '4 4');
+    const gid = 'jw-lz-' + Math.random().toString(36).slice(2, 7);
+    const lg = svg.append('defs').append('linearGradient').attr('id', gid).attr('x1', 0).attr('x2', 0).attr('y1', 0).attr('y2', 1);
+    [[0, .35], [.5, .12], [1, 0]].forEach(([o, a]) => lg.append('stop').attr('offset', o).style('stop-color', 'var(--c1)').style('stop-opacity', a));
+    svg.append('path').datum(d.data).attr('d', d3.area().x((p) => x(p.names_share)).y0((p) => y(p.names_share)).y1((p) => y(p.value_share))).attr('fill', `url(#${gid})`);
+    svg.append('path').datum(d.data).attr('d', d3.line().x((p) => x(p.names_share)).y((p) => y(p.value_share))).style('fill', 'none').style('stroke', 'var(--c1)').style('stroke-width', 2).style('stroke-linejoin', 'round').style('filter', 'drop-shadow(0 0 6px var(--c1))');
+    const p1 = d.data[1], p10 = d.data[10];
+    [[p1, `TOP 1% → ${d3.format('.0%')(p1.value_share)}`], [p10, `TOP 10% → ${d3.format('.0%')(p10.value_share)}`]].forEach(([p, label], i) => {
+      svg.append('circle').attr('cx', x(p.names_share)).attr('cy', y(p.value_share)).attr('r', 4).style('fill', i ? 'var(--c2)' : 'var(--warn)');
+      svg.append('text').attr('x', x(p.names_share) + 10).attr('y', y(p.value_share) + (i ? 14 : 4)).style('fill', 'var(--ink)').style('font-size', '11px').style('font-weight', 700).text(label);
+    });
+    svg.append('text').attr('x', x(1)).attr('y', y(0.06)).attr('text-anchor', 'end').style('fill', 'var(--ink3)').style('font-size', '10px').text(r0 && r0.gini != null ? `GINI ${d3.format('.3f')(r0.gini)}` : '');
+  });
+
+  dash.draw('wall', (el) => {
+    el.replaceChildren();
+    const d = dash.data('current'); if (d.status !== 'ok') return;
+    const rows = [...d.data].sort((a, b) => (typeof b.ask_oct31 === 'number' ? b.ask_oct31 : -1) - (typeof a.ask_oct31 === 'number' ? a.ask_oct31 : -1) || a.domain.localeCompare(b.domain));
+    const W = Math.max(260, el.clientWidth - 26), gap = 3, cell = W < 520 ? 9 : W < 900 ? 12 : 14;
+    const cols = Math.max(10, Math.floor((W + gap) / (cell + gap))), H = Math.ceil(rows.length / cols) * (cell + gap);
+    const asks = rows.map((r) => r.ask_oct31).filter((v) => typeof v === 'number' && v > 0);
+    const shade = d3.scaleLog().domain([d3.min(asks) || 1, d3.max(asks) || 10]).range([0.12, 0.9]).clamp(true);
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${cols * (cell + gap) - gap} ${H}`);
+    if (!el.dataset.drawn) { el.classList.add('is-new'); el.dataset.drawn = '1'; } else el.classList.remove('is-new');
+    const tip = d3.select(el).append('div').attr('class', 'jw-tip').style('display', 'none');
+    svg.selectAll('rect').data(rows).join('rect')
+      .attr('x', (r, i) => (i % cols) * (cell + gap)).attr('y', (r, i) => Math.floor(i / cols) * (cell + gap)).attr('width', cell).attr('height', cell).attr('rx', 2)
+      .attr('class', (r) => r.status !== 'Watching' ? 'jw-hot' : null).style('--i', (r, i) => i)
+      .style('fill', (r) => jwFill[r.status] || 'var(--c1)')
+      .style('fill-opacity', (r) => jwFill[r.status] ? 1 : (typeof r.ask_oct31 === 'number' ? shade(r.ask_oct31) : 0.08))
+      .style('cursor', 'pointer')
+      .on('mousemove', (event, r) => { tip.style('display', null).html(''); tip.append('div').attr('class', 'd').text(r.domain); tip.append('div').text(`${r.status} · ${jwMoney(r.ask_now)}`); tip.append('div').attr('class', 's').text(`${r.group} · ${r.venue}`); const [x, y] = d3.pointer(event, el); tipAt(tip, el, x, y); })
+      .on('mouseleave', () => tip.style('display', 'none'))
+      .on('click', (event, r) => { dash.setParams({ q: r.domain, view: 'all' }); document.getElementById('names')?.scrollIntoView({ behavior: 'smooth' }); });
+  });
+
+  dash.draw('feed', (el) => {
+    el.replaceChildren();
+    const d = dash.data('changes'); if (d.status !== 'ok') return;
+    const KIND = { price: ['PRICE', 'c-price'], off_dynadot: ['OFF_DYNADOT', 'c-off'], on_dynadot: ['ON_DYNADOT', 'c-on'], nameservers: ['NS_MOVE', 'c-ns'] };
+    const isM = (v) => v !== null && v !== '' && !isNaN(+v);
+    const rows = [...d.data].sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    for (const e of rows.slice(0, 300)) {
+      const [k, c] = KIND[e.kind] || [String(e.kind).toUpperCase(), 'c-watch'];
+      const li = document.createElement('li'); li.className = c;
+      const t = document.createElement('span'); t.className = 't'; t.textContent = jwStamp(e.at);
+      const kk = document.createElement('span'); kk.className = 'k'; kk.textContent = k;
+      const msg = document.createElement('span'); msg.className = 'm';
+      const b = document.createElement('b'); b.textContent = e.domain; msg.append(b);
+      let rest = '';
+      if (e.kind === 'price' && isM(e.before) && isM(e.after)) { const pct = (+e.after - +e.before) / +e.before; rest = `  ${jwMoney(e.before)} → ${jwMoney(e.after)}  (${pct > 0 ? '+' : ''}${d3.format('.0%')(pct)})`; }
+      else if (e.kind === 'off_dynadot') rest = `  was ${isM(e.before) ? jwMoney(e.before) : e.before}; not in Dynadot export`;
+      else rest = `  ${e.before ?? 'none'} → ${e.after ?? 'none'}`;
+      msg.append(document.createTextNode(rest));
+      li.append(t, kk, msg); el.append(li);
+    }
+    const end = document.createElement('li'); const s = document.createElement('span'); s.className = 'cursor'; s.textContent = rows.length ? '▌ awaiting next sweep' : '▌ no changes yet'; end.append(document.createElement('span'), document.createElement('span'), s); el.append(end);
+  });
+
+  dash.draw('checks', (el) => {
+    el.replaceChildren();
+    const d = dash.data('checks'); if (d.status !== 'ok') return;
+    const rows = [...d.data].sort((a, b) => String(a.at).localeCompare(String(b.at))).slice(-60);
+    const W = Math.max(260, el.clientWidth), H = 80, bw = Math.min(16, Math.max(4, (W - 4) / Math.max(rows.length, 20) - 3));
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H + 22}`);
+    const col = { ok: 'var(--good)', partial: 'var(--warn)', failed: 'var(--bad)' };
+    for (let i = 0; i * (bw + 3) < W; i++) svg.append('rect').attr('x', i * (bw + 3)).attr('y', 8).attr('width', bw).attr('height', H - 8).attr('rx', 1.5).style('fill', 'var(--c1-soft)').style('opacity', 0.35);
+    svg.append('line').attr('x1', 0).attr('x2', W).attr('y1', H).attr('y2', H).style('stroke', 'var(--line2)');
+    const tip = d3.select(el).append('div').attr('class', 'jw-tip').style('display', 'none');
+    svg.selectAll('rect.r').data(rows).join('rect').attr('class', 'r').attr('x', (r, i) => i * (bw + 3)).attr('y', 8).attr('width', bw).attr('height', H - 8).attr('rx', 1.5)
+      .style('fill', (r) => col[r.status] || 'var(--ink4)').style('filter', (r) => `drop-shadow(0 0 5px ${col[r.status] || 'transparent'})`)
+      .on('mousemove', (event, r) => { tip.style('display', null).html(''); tip.append('div').attr('class', 's').text(jwStamp(r.at)); tip.append('div').text(`${String(r.status).toUpperCase()}${r.on_dynadot != null ? ' · ' + d3.format(',')(r.on_dynadot) + ' on Dynadot' : ''}${r.changes != null ? ' · ' + r.changes + ' changes' : ''}`); if (r.note) tip.append('div').attr('class', 's').text(r.note); const [px, py] = d3.pointer(event, el); tipAt(tip, el, px, py); })
+      .on('mouseleave', () => tip.style('display', 'none'));
+    if (rows.length) svg.append('text').attr('x', 0).attr('y', H + 16).style('fill', 'var(--ink4)').style('font-size', '10px').text(jwStamp(rows[0].at));
+    if (rows.length > 1) svg.append('text').attr('x', W).attr('y', H + 16).attr('text-anchor', 'end').style('fill', 'var(--ink4)').style('font-size', '10px').text(jwStamp(rows[rows.length - 1].at));
+  });
+
+  const filtered = () => {
+    const d = dash.data('current'); if (d.status !== 'ok') return null;
+    const p = dash.params(), view = p.view || 'all', q = (p.q || '').toLowerCase();
+    const rows = d.data.filter((r) => (view === 'changed' ? r.status !== 'Watching' : view === 'priority' ? r.group === 'Priority 101' : true) && (!q || r.domain.includes(q)));
+    const key = p.sort || 'status', dir = (p.dir || 'asc') === 'asc' ? 1 : -1;
+    const val = (r) => key === 'status' ? jwSev[r.status] : r[key];
+    return rows.sort((a, b) => {
+      const va = val(a), vb = val(b), na = va === null || va === '' || va === undefined, nb = vb === null || vb === '' || vb === undefined;
+      if (na !== nb) return na ? 1 : -1;
+      const c = typeof va === 'number' && typeof vb === 'number' ? va - vb : String(va).localeCompare(String(vb));
+      return c * dir || (typeof b.ask_oct31 === 'number' ? b.ask_oct31 : 0) - (typeof a.ask_oct31 === 'number' ? a.ask_oct31 : 0);
+    });
+  };
+  dash.draw('shown', (el) => { const rows = filtered(), d = dash.data('current'); el.textContent = rows ? `${d3.format(',')(rows.length)} / ${d3.format(',')(d.data.length)} names` : '—'; });
+  dash.draw('rows', (el) => {
+    el.replaceChildren();
+    const rows = filtered(); if (!rows) return;
+    const frag = document.createDocumentFragment();
+    for (const r of rows) {
+      const tr = document.createElement('tr');
+      const td = (text, cls) => { const c = document.createElement('td'); if (cls) c.className = cls; c.textContent = text; tr.append(c); };
+      const n = document.createElement('td'); const a = document.createElement('a');
+      a.href = 'https://www.dynadot.com/market/user-listings/' + encodeURIComponent(r.domain); a.target = '_blank'; a.rel = 'noopener'; a.textContent = r.domain; n.append(a); tr.append(n);
+      const sc = document.createElement('td'); const chip = document.createElement('span'); chip.className = 'jw-chip ' + (jwClass[r.status] || 'c-watch'); chip.textContent = r.status; sc.append(chip); tr.append(sc);
+      td(r.ask_now === null ? (r.venue === 'Dynadot' ? 'Not listed' : '—') : jwMoney(r.ask_now), 'num' + (r.ask_now === null ? ' jw-dim' : ''));
+      td(jwMoney(r.ask_oct31), 'num jw-dim');
+      td(r.change === null || r.change === 0 ? '—' : (r.change > 0 ? '+' : '−') + jwMoney(Math.abs(r.change)), 'num ' + (r.change > 0 ? 'jw-up' : r.change < 0 ? 'jw-down' : 'jw-dim'));
+      td(r.nameservers || '—', 'jw-hide-sm jw-dim'); td(r.group, 'jw-hide-sm jw-dim'); td(r.last_change ? jwTime(r.last_change) : '—', 'jw-hide-sm jw-dim');
+      frag.append(tr);
+    }
+    el.append(frag);
+  });
+</script>
+
+<script>
+  Promise.all(['domains.json', 'changes.json', 'checks.json'].map((f) => fetch(f, { cache: 'no-store' }).then((r) => { if (!r.ok) throw new Error(f + ' ' + r.status); return r.json(); })))
+    .then(([domains, changes, checks]) => dash._load({ domains: { status: 'ok', data: domains }, changes: { status: 'ok', data: changes }, checks: { status: 'ok', data: checks } }))
+    .catch((e) => { console.error(e); document.querySelectorAll('.jw-lede').forEach((p) => { p.textContent = 'Could not load the latest data. Refresh the page to try again.'; }); });
+</script>
+
+</body>
+</html>
